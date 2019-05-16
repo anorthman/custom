@@ -60,13 +60,9 @@ class fbnet_search(object):
     def save_theta(self, epoch):
         save_path = "%s/epoch_%d_end_arch_params.txt" % \
                         (self.save_result_path, epoch)
-        #res = []
         with open(save_path, 'w') as f:
           for t in self.theta:
             t_list = list(t.detach().cpu().numpy())
-            #t_list = t.detach().cpu().numpy()
-            #res.append(t_list)
-            #s = ' '.join([str(tmp) for tmp in t_list])
             s = ' '.join(["%.5f"%tmp for tmp in t_list[0]])
             f.write(s + '\n')
         self.logger.info("Save architecture paramterse to %s" % save_path)

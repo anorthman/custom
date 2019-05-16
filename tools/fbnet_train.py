@@ -9,27 +9,7 @@ from backbone.fbnet import FBNet
 from backbone import FBNet_sample
 from utils import _logger
 
-# parser = argparse.ArgumentParser(description="Train a model with data parallel for base net \
-#                                 and model parallel for classify net.")
-# parser.add_argument('--batch-size', type=int, default=256,
-#                     help='training batch size of all devices.')
-# parser.add_argument('--epochs', type=int, default=1000,
-#                     help='number of training epochs.')
-# parser.add_argument('--log-frequence', type=int, default=10,
-#                     help='log frequence, default is 400')
-# parser.add_argument('--gpus', type=str, default='0',
-#                     help='gpus, default is 0')
-# parser.add_argument('--fb-cfg', type=str, help='fbnet_buildconfig')
-# parser.add_argument('--det-cfg', type=str, help='fbnet_buildconfig')
-# args = parser.parse_args()
-
-
-
-# det_cfg = Config.fromfile(args.det_cfg)
-
-from model.classifer import Class
 from model.two_stage import TwoStageDetector
-
 
 from mmcv import Config as mmcv_config
 from mmdet.apis.train import parse_losses
@@ -43,19 +23,12 @@ from mmcv.parallel import MMDataParallel
 class detection(nn.Module):
     def __init__(self, cfg, train_cfg, test_cfg, base, depth, space, theta_txt):
         super(detection, self).__init__()
-        #self.resnet50 = ResNet(50, num_stages=3, out_indices=[2], strides=(1,2,2), dilations=(1,1,1))
-        #self.fbnet = FBNet_sample(base, depth, space, theta_txt="theta/epoch_49_end_arch_params.txt")
-        self.fbnet = FBNet_sample(base, depth, space, theta_txt)#,weight_opt_dict, theta_opt_dict,w_cfg=w_sche_cfg)
+        self.fbnet = FBNet_sample(base, depth, space, theta_txt)
         self.detect = TwoStageDetector(cfg, train_cfg, test_cfg)
-        #self.init_weights = self.fbnet.init_weights()
         self.init_weights()
     def forward(self, **input):
-        #input["x"] = self.resnet50(input.pop('img'))
-        #input["x"] = self.fbnet(input.pop('img'),input.pop('temp'))
         input["img"] = self.fbnet(input.pop('img'))
-        #print(input)
         loss = self.detect(**input)
-        #loss, self.loss_vars = parse_losses(loss)
         return loss
     def init_weights(self):
         return self.fbnet.init_weights()
@@ -101,7 +74,6 @@ def parse_args():
 
 def main():
     args = parse_args()
-    #search_cfg = Config.fromfile("search_config/config.py")
     fb_cfg = mmcv_config.fromfile(args.fb_cfg)
     _space = fb_cfg.search_space
     base = _space['base']
@@ -109,7 +81,6 @@ def main():
     space = _space['space']
 
     model_cfg = mmcv_config.fromfile(args.model_cfg)
-    #cfg = Config.fromfile("cascade_mask_rcnn_r50_fpn_1x.py")
     # set cudnn_benchmark
     if model_cfg.get('cudnn_benchmark', False):
         torch.backends.cudnn.benchmark = True
@@ -145,29 +116,7 @@ def main():
                         base, depth, space,
                         args.theta_txt)
     print(model)
-    # model = build_detector(
-    #     cfg.model, train_cfg=cfg.train_cfg, test_cfg=cfg.test_cfg)
     train_dataset = get_dataset(model_cfg.data.train)
-    # img_norm_cfg = dict(
-    #     mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True)
-    # w_data_cfg = dict(train=dict(
-    #     #ann_file=data_root + 'annotations/instances_train2017.json',
-    #     ann_file='/home1/zhaoyu/dataset/car_w.pkl',
-    #     #img_prefix="" ,#data_root + 'val2017/',
-    #     img_prefix="",
-    #     #img_prefix=data_root + 'train2017/',
-    #     img_scale=(1000, 320),
-    #     img_norm_cfg=img_norm_cfg,
-    #     size_divisor=32,
-    #     flip_ratio=0.5,
-    #     with_mask=False,
-    #     with_crowd=True,
-    #     with_label=True))    
-    # w_dataset = CustomDataset(**w_data_cfg['train'])
-    # w_dataset = build_dataloader(w_dataset, imgs_per_gpu=16,
-    #                workers_per_gpu=2,#config.imgs_per_gpu,
-    #                dist=False,
-    #                num_gpus=len(gpus))
     train_detector(
         model,
         train_dataset,

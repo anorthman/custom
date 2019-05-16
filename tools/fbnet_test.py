@@ -21,13 +21,9 @@ import time
 class detection(nn.Module):
     def __init__(self, cfg, train_cfg, test_cfg, base, depth, space, theta_txt):
         super(detection, self).__init__()
-        #self.resnet50 = ResNet(50, num_stages=3, out_indices=[2], strides=(1,2,2), dilations=(1,1,1))
-        # self.fbnet = FBNet_sample(base, depth, space, theta_txt="theta/epoch_1_end_arch_params.txt")
         self.fbnet = FBNet_sample(base, depth, space, theta_txt)
-        #self.fbnet = FBNet_sample(base, depth, space, theta_txt="3x3.txt")#,weight_opt_dict, theta_opt_dict,w_cfg=w_sche_cfg)
         self.detect = TwoStageDetector(cfg, train_cfg, test_cfg)
-        #self.init_weights = self.fbnet.init_weights()
-        self.init_weights()
+        # self.init_weights()
     def forward(self, **input):
         #input["x"] = self.resnet50(input.pop('img'))
         #input["x"] = self.fbnet(input.pop('img'),input.pop('temp'))

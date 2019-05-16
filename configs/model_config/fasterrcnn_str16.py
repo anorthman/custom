@@ -93,12 +93,8 @@ data = dict(
     workers_per_gpu=8,
     train=dict(
         type=dataset_type,
-        # ann_file="/home1/zhaoyu/dataset/car.pkl",
-        #ann_file="/home1/zhaoyu/dataset/car_w.pkl",#'/home/zhaoyu/data/mmdet_data/testcar.pkl', #data_root + 'annotations/instances_train2017.json',
         ann_file="/home1/zhaoyu/dataset/traincar.pkl",
-        #ann_file="/home1/zhaoyu/dataset/car_1img.pkl", #'/home/zhaoyu/data/mmdet_data/testcar.pkl', #data_root + 'annotations/instances_train2017.json',
         img_prefix='',
-        #img_prefix=data_root + 'train2017/',
         img_scale=(1333, 320),
         img_norm_cfg=img_norm_cfg,
         size_divisor=32,
@@ -119,12 +115,7 @@ data = dict(
         with_label=True),
     test=dict(
         type=dataset_type,
-        # ann_file="/home1/zhaoyu/dataset/car.pkl",
         ann_file="/home1/zhaoyu/dataset/testcar.pkl",
-        # ann_file="/home1/zhaoyu/dataset/car_1img.pkl", #'/home/zhaoyu/data/mmdet_data/testcar.pkl', #data_root + 'annotations/instances_train2017.json',
-        # ann_file='/home/zhaoyu/data/mmdet_data/testcar.pkl', #data_root + 'annotations/instances_val2017.json',
-        #ann_file=data_root + 'annotations/instances_val2017.json',
-        #img_prefix=data_root + 'val2017/',
         img_prefix='',
         img_scale=(1333, 320),
         img_norm_cfg=img_norm_cfg,
@@ -146,14 +137,14 @@ lr_config = dict(
     warmup_ratio=1.0 / 3,
     step=[20, 28])
 checkpoint_config = dict(interval=1)
-# yapf:disable
+
 log_config = dict(
     interval=20,
     hooks=[
         dict(type='TextLoggerHook'),
         dict(type='TensorboardLoggerHook')
     ])
-# yapf:enable
+
 # runtime settings
 total_epochs = 30
 device_ids = range(8)
