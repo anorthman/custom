@@ -5,32 +5,41 @@ from utils import CosineDecayLR
 from mmcv.parallel import MMDataParallel
 from mmdet.apis.train import parse_losses
 from torch import nn
-
+import torch.optim as optim
 class fbnet_search(object):
-    def __init__(self, model, gpus, imgs_per_gpu, w_cfg=None, mmcv_parallel=True, save_result_path="./theta/"):
+    def __init__(self, model, gpus, imgs_per_gpu, 
+                weight_opt_dict=None, 
+                theta_opt_dict=None,
+                weight_lr_sche=None,
+                weight_lr_type=CosineDecayLR,
+                mmcv_parallel=True, 
+                save_result_path="./theta/",
+                decay_temp_epoch=2,
+                alpha=0.2, beta=0.6):
         assert isinstance(model, nn.Module), "model must be a module" 
         self.model = model.cuda().train()
         if mmcv_parallel:
             self.model = MMDataParallel(self.model, gpus) 
         self.weights = self.model.module.parameters()
         self.theta = self.model.module.theta
-        self.w_optim = self.model.module.get_wopt(self.weights)
-        self.t_optim = self.model.module.get_topt(self.theta)
+        self.w_optim = getattr(optim, weight_opt_dict.pop("type"))(self.weights,**weight_opt_dict)
+        self.t_optim = getattr(optim, theta_opt_dict.pop("type"))(self.theta,**theta_opt_dict)
         self.logger = logging
-        self.w_lr = CosineDecayLR 
-        self.w_lr_scheduler = self.w_lr(self.w_optim, **w_cfg)
+        self.w_lr_scheduler = weight_lr_type(self.w_optim, **weight_lr_sche)
         self.temp = self.model.module.temp
         self.temp_decay = self.model.module.temp_decay
-        self.decay_temperature_step = 100
+        self.decay_temp_epoch = decay_temp_epoch
         self._batch_end_cb_func = []
-        self._batch_end_cb_func.append(lambda x, y: self._update_temp(x, y))
         self._batch_end_cb_func.append(lambda x, y: self._test_log(x, y))
         self._epoch_end_cb_func = []
         self._epoch_end_cb_func.append(lambda x: self.save_theta(x))
+        self._epoch_end_cb_func.append(lambda x: self._update_temp(x))
         self.batch_size = imgs_per_gpu * len(gpus)
         self.save_result_path = save_result_path
-        if os.path.exists(self.save_result_path):
-            os.mkdirs(self.save_result_path) 
+        self.alpha = alpha
+        self.beta = beta
+        if not os.path.exists(self.save_result_path):
+            os.mkdir(self.save_result_path) 
 
     def _test_log(self, epoch, batch):
         if (batch > 0) and (batch % self.log_frequence == 0):
@@ -41,53 +50,60 @@ class fbnet_search(object):
 
     def log_info(self, epoch, batch, speed=None):
         msg = "Epoch[%d] Batch[%d]" % (epoch, batch)
+        msg += " %s:%.3f"%("lat_loss", self.lateloss)
         for key in self.loss_vars.keys():
             msg += " %s:%.3f"%(key, self.loss_vars[key])
         if speed is not None:
             msg += ' Speed: %.6f samples/sec' % speed
         self.logger.info(msg)
         return msg
-    def save_theta(epoch):
+    def save_theta(self, epoch):
         save_path = "%s/epoch_%d_end_arch_params.txt" % \
                         (self.save_result_path, epoch)
-        res = []
+        #res = []
         with open(save_path, 'w') as f:
-          for t in self.arch_params:
+          for t in self.theta:
             t_list = list(t.detach().cpu().numpy())
-            res.append(t_list)
-            s = ' '.join([str(tmp) for tmp in t_list])
+            #t_list = t.detach().cpu().numpy()
+            #res.append(t_list)
+            #s = ' '.join([str(tmp) for tmp in t_list])
+            s = ' '.join(["%.5f"%tmp for tmp in t_list[0]])
             f.write(s + '\n')
         self.logger.info("Save architecture paramterse to %s" % save_path)
 
-    def _update_temp(self, epoch, batch=None):
-        if (batch is None) or ((batch > 0) and (batch % self.decay_temperature_step == 0)):
+    def _update_temp(self, epoch):
+        if epoch % self.decay_temp_epoch == 0:
             self.temp *= self.temp_decay
             msg = 'Epoch[%d] ' % epoch
-            if not batch is None:
-                msg += 'Batch[%d] ' % batch
             msg += "Decay temperature to %.6f" % self.temp
             self.logger.info(msg)
 
     def step_w(self, _optim, **input):
         _optim.zero_grad()
-        loss = self.model(**input)
+        loss, lateloss = self.model(**input)
         loss, self.loss_vars = parse_losses(loss)
+        self.lateloss = self.alpha*(lateloss.mean().log().pow(self.beta))
+        loss = loss + self.lateloss
         loss.backward()
         _optim.step()
         self.w_lr_scheduler.step()
 
     def step_t(self, _optim, **input):
         _optim.zero_grad()
-        loss = self.model(**input)
+        loss, lateloss = self.model(**input)
         loss, self.loss_vars = parse_losses(loss)
+        self.lateloss = self.alpha*(lateloss.mean().log().pow(self.beta))
+        loss = loss + self.lateloss
         loss.backward()
         _optim.step()
-        loss.backward()
-        _optim.step()
-
+        
     def batch_end_callback(self, epoch, batch):
         for func in self._batch_end_cb_func:
             func(epoch, batch)
+
+    def epoch_end_callback(self, epoch):
+        for func in self._epoch_end_cb_func:
+            func(epoch)
 
     def search(self, train_w_ds, train_t_ds, **kwargs):
         num_epoch = kwargs.get('epoch', 100)
@@ -100,20 +116,21 @@ class fbnet_search(object):
             self.tic = time.time()
             self.logger.info("Start to train w for epoch %d" % epoch)
             for step, inputs in enumerate(train_w_ds):
-                inputs['temperature'] = self.temp 
-                self.step_w(self.w_optim,**inputs)
+                inputs['temp'] = self.temp 
+                self.step_w(self.w_optim, **inputs)
                 self.batch_end_callback(epoch, step)
             #self.epoch_end_callback(epoch)
         for epoch in range(num_epoch):
             self.tic = time.time()
             self.logger.info("Start to train arch for epoch %d" % (epoch+start_w_epoch))
             for step, inputs in enumerate(train_t_ds):
-                inputs['temperature'] = self.temp 
+                inputs['temp'] = self.temp 
                 self.step_t(self.t_optim, **inputs)
                 self.batch_end_callback(epoch+start_w_epoch, step)
             self.tic = time.time()
             self.logger.info("Start to train w for epoch %d" % (epoch+start_w_epoch))
             for step, inputs in enumerate(train_w_ds):
+                inputs['temp'] = self.temp 
                 self.step_w(self.w_optim, **inputs)
                 self.batch_end_callback(epoch+start_w_epoch, step)
             self.epoch_end_callback(epoch)

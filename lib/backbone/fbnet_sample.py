@@ -11,42 +11,19 @@ from utils import CosineDecayLR, AvgrageMeter
 from itertools import accumulate
 import time
 import logging
-
-class FBNet(nn.Module):
-    def __init__(self, base, depth, space, 
-                weight_opt_dict=None,
-                theta_opt_dict=None,
+import copy
+class FBNet_sample(nn.Module):
+    def __init__(self, base, depth, space, theta_txt,
                 skip=True,
-                speed_txt = './speed_cpu.txt', 
-                init_temperature=5.0,
-                temperature_decay=0.965,
-                w_lr=CosineDecayLR,
-                w_cfg={'T_max':400},
-                t_lr=None,
-                t_cfg=None
                 ):
-        """
-        weight_opt_dict:dict
-            weights param optim setting
-        theta_opt_dict: dict
-            theta param optim setting
-        """
-        super(FBNet, self).__init__()
+        super(FBNet_sample, self).__init__()
 
         self.skip = skip 
         self.space = space
         self.depth = depth
         self.depth_num = sum(depth)
         self.num = len(self.space)
-        self.theta = self.get_theta()
-        self.temp = init_temperature
-        self.temp_decay = temperature_decay
-        self.weight_opt = weight_opt_dict
-        self.theta_opt = theta_opt_dict
-        self.w_lr = w_lr
-        self.w_cfg = w_cfg
-        self.t_lr = t_lr
-        self.t_cfg = t_cfg
+        self.theta_txt = theta_txt
         self.ft_map = list(accumulate(self.depth))
         self.ft = [0,0,1,0]
         self.logger = logging
@@ -54,47 +31,42 @@ class FBNet(nn.Module):
         self.bn1 = nn.BatchNorm2d(base['out_channels'])
         self.relu1 = nn.ReLU(inplace=True)
         self._ops = self.build()
-        with open(speed_txt, "r") as f:
-            self.speed = f.readlines()
-        # self.weight = None
-
-    def get_theta(self):
-        theta = []
-        for i in range(len(self.depth)):
-            theta.append(nn.Parameter(torch.ones((1, self.num)), 
-                                                    requires_grad=True))
-            for j in range(self.depth[i]-1):
-                if self.skip:
-                    theta.append(nn.Parameter(torch.ones((1, self.num+1)), 
-                                                    requires_grad=True))
-                else:
-                    theta.append(nn.Parameter(torch.ones((1, self.num)), 
-                                                    requires_grad=True))
-        return theta 
 
     def build(self):
-        _ops = nn.ModuleList()
+        res = []
+        with open(self.theta_txt,"r") as f:
+            thetas = f.readlines()
+        for i in range(len(thetas)):
+            _theta = torch.Tensor([float(x) for x in thetas[i].split(" ")])
+            weight = nn.functional.softmax(_theta)
+            # print(weight)
+            _max = torch.argmax(weight)
+            res.append(_max)
+        # print("-------------------")
+        # print(res)
+        blocks = nn.ModuleList()
+        k = 0
         for i in range(len(self.depth)):
             for j in range(self.depth[i]):       
-                blocks = nn.ModuleList()
-                if j!=0 and self.skip:
-                    blocks.append(BASICUNIT['Identity']())    
-                for unit in self.space:
-                    if j == 0:
-                        unit['param']['stride'] = 2
-                        unit['param']['_in'] = unit['param']['_in']
-                        unit['param']['_out'] = unit['param']['_out']*2
-                    else:
-                        unit['param']['stride'] = 1
-                        unit['param']['_in'] = unit['param']['_out']
-                    blocks.append(BASICUNIT[unit['type']](**unit['param']))        
-                _ops.append(MixedOp(blocks))
-        assert len(_ops) == self.depth_num
-        return _ops
-
-    # def get_weight(self, theta):
-    #     weight = nn.functional.gumbel_softmax(theta, self.temp)
-    #     return weight.cuda()
+                if j ==0 :
+                    unit = copy.deepcopy(self.space[res[k]])
+                elif j!=0 and self.skip and res[k] == 0:
+                    blocks.append(BASICUNIT['Identity']())
+                    k += 1
+                    continue
+                else :
+                    unit = copy.deepcopy(self.space[res[k]-1])
+                if j == 0:
+                    unit['param']['stride'] = 2
+                    unit['param']['_in'] = unit['param']['_in']*(2**i)
+                    unit['param']['_out'] = unit['param']['_out']*(2**(i+1))
+                else:
+                    unit['param']['stride'] = 1
+                    unit['param']['_in'] = unit['param']['_in']*(2**(i+1))
+                    unit['param']['_out'] = unit['param']['_out']*(2**(i+1))
+                blocks.append(BASICUNIT[unit['type']](**unit['param']))
+                k += 1        
+        return blocks
 
     def forward_train(self, x, temperature): 
         x = self.baseconv(x)
@@ -105,22 +77,19 @@ class FBNet(nn.Module):
             x = self._ops[i](x, weight)
         return x
 
-    def forward(self, x, temperature):
+    def forward(self, x):
         x = self.baseconv(x)
         x = self.bn1(x)
         x = self.relu1(x)
-        late_loss = 0
         outs = []
         j = 0
         for i in range(len(self._ops)):
-            weight = nn.functional.gumbel_softmax(self.theta[i], temperature).cuda()
-            late_loss += self.lat_loss(self.speed[i], weight)
-            x = self._ops[i](x, weight)
+            x = self._ops[i](x)
             if i == self.ft_map[j]-1:
                 if self.ft[j] == 1:
                     outs.append(x)
                 j += 1
-        return outs , late_loss
+        return outs 
 
     def init_weights(self, pretrained=None):
         if isinstance(pretrained, str):

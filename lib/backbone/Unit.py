@@ -224,19 +224,20 @@ class pz_DownsampleUnit(nn.Module):
 
 @BASICUNIT.register_module
 class ResNetBasicBlock(nn.Module):
-  def __init__(self, _in, _out, stride=1, groups=1, shuffle=False,
+  def __init__(self, _in, _out, kernel_size=3, padding=1, stride=1, groups=1, shuffle=False,
                expansion=1):
     super(ResNetBasicBlock, self).__init__()
     m = OrderedDict()
-    m['conv1'] = conv3x3(_in, _out * expansion, stride) # groups=groups
+    m['conv1'] = nn.Conv2d(_in, _out, kernel_size=kernel_size, stride=stride, padding=padding, bias=False)
+    #m['conv1'] = conv3x3(_in, _out * expansion, stride) # groups=groups
     # if shuffle and groups > 1:
     #   m['shuffle1'] = ChannelShuffle(groups)
     m['bn1'] = nn.BatchNorm2d(_out)
     m['relu1'] = nn.ReLU(inplace=True)
-    m['conv2'] = conv3x3(_out * expansion, _out, groups=groups)
-    if shuffle and groups > 1:
-      m['shuffle2'] = ChannelShuffle(groups)
-    m['bn2'] = nn.BatchNorm2d(_out)
+    m['conv2'] = nn.Conv2d(_in, _out*expansion, kernel_size=kernel_size, stride=1, padding=1, bias=False)
+    # if shuffle and groups > 1:
+    #   m['shuffle2'] = ChannelShuffle(groups)
+    m['bn2'] = nn.BatchNorm2d(_out*expansion)
     self.group1 = nn.Sequential(m)
     self.relu= nn.Sequential(nn.ReLU(inplace=True))
     downsample = None
@@ -263,23 +264,25 @@ class Identity(nn.Module):
 
 @BASICUNIT.register_module
 class ResNetBottleneck(nn.Module):
-  def __init__(self, _in, _out, stride=1, groups=1, shuffle=False,
+  def __init__(self, _in, _out, kernel_size=3, padding=1, stride=1, groups=1, shuffle=False, 
                expansion=1):
     super(ResNetBottleneck, self).__init__()
     m  = OrderedDict()
     r = int(_out * 0.25 * expansion)
+    m['bn0'] = nn.BatchNorm2d(_in)
+    m['relu0'] = nn.ReLU(inplace=True)
     m['conv1'] = nn.Conv2d(_in, r, kernel_size=1, bias=False)
     m['bn1'] = nn.BatchNorm2d(r)
     m['relu1'] = nn.ReLU(inplace=True)
-    m['conv2'] = nn.Conv2d(r, r, kernel_size=3, stride=stride, padding=1, bias=False)
+    m['conv2'] = nn.Conv2d(r, r, kernel_size=kernel_size, stride=stride, padding=padding, bias=False)
     m['bn2'] = nn.BatchNorm2d(r)
     m['relu2'] = nn.ReLU(inplace=True)
     m['conv3'] = nn.Conv2d(r, _out, groups=groups, kernel_size=1, bias=False)
     if shuffle and groups > 1:
       m['shuffle2'] = ChannelShuffle(groups)
-    m['bn3'] = nn.BatchNorm2d(_out)
+    #m['bn3'] = nn.BatchNorm2d(_out)
     self.group1 = nn.Sequential(m)
-    self.relu= nn.Sequential(nn.ReLU(inplace=True))
+    #self.relu= nn.Sequential(nn.ReLU(inplace=True))
     downsample = None
     if stride != 1 or _in != _out:
       downsample = nn.Sequential(
@@ -293,5 +296,5 @@ class ResNetBottleneck(nn.Module):
     else:
         residual = x
     out = self.group1(x) + residual
-    out = self.relu(out)
+    #out = self.relu(out)
     return out
