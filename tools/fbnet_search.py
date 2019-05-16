@@ -15,9 +15,10 @@ from backbone.fbnet import FBNet
 from utils import _logger
 from model.two_stage import TwoStageDetector
 from search.search import fbnet_search
+from tools.convert_custom import split_data
 
 class detection(nn.Module):
-    def __init__(self, cfg, train_cfg, test_cfg, speed_txt):
+    def __init__(self, cfg, train_cfg, test_cfg, base, depth, space, speed_txt):
         super(detection, self).__init__()
         print(speed_txt)
         self.fbnet = FBNet(base, depth, space, speed_txt=speed_txt)
@@ -60,11 +61,15 @@ def main():
 
     model_cfg = mmcv_config.fromfile(args.model_cfg)
     # # dataset settings
-    data_root = '/home/zhaoyu/workspace/pytorch1.0/mmdetection_/data/coco/'
+    classes = ['background', 'car']
+    min_scale = 0
+    w_data, t_data=split_data('/home1/zhaoyu//dataset/pbtc/raw/info/test_img_label_size_2000', 
+                    'testcar', classes, min_scale)
     img_norm_cfg = dict(
         mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True)
     w_data_cfg = dict(train=dict(
-            ann_file='/home1/zhaoyu/dataset/car_w.pkl',
+            # ann_file='/home1/zhaoyu/dataset/car_w.pkl',
+            ann_file=w_data,
             img_prefix="",
             img_scale=(1000, 320),
             img_norm_cfg=img_norm_cfg,
@@ -75,7 +80,8 @@ def main():
             with_label=True))
 
     t_data_cfg = dict(train=dict(
-            ann_file='/home1/zhaoyu/dataset/car_t.pkl',
+            # ann_file='/home1/zhaoyu/dataset/car_t.pkl',
+            ann_file=t_data,
             img_prefix="",
             img_scale=(1000, 320),
             img_norm_cfg=img_norm_cfg,
@@ -99,7 +105,8 @@ def main():
 
     det = detection(mmcv_config(model_cfg['model_cfg']), 
                     mmcv_config(model_cfg['train_cfg']), 
-                    mmcv_config(model_cfg['test_cfg']), 
+                    mmcv_config(model_cfg['test_cfg']),
+                    _space['base'], _space['depth'], _space['space'],
                     speed_txt=args.speed_txt)
     print(det)
     searcher = fbnet_search(det, gpus, imgs_per_gpu=8,              
