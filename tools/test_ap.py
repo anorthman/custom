@@ -21,9 +21,9 @@ def pkl2txt(pkl,gt_pickle):
 			filelist.write(root_txt+str(i)+'.txt'+" ")
 			for j in range(data[i][0].shape[0]):
 				a = [g.write(str(data[i][0][j][k])+" ") for k in range(4)]
-				g.write(str(1)+" ")
+				g.write(str(0)+" ")
 				g.write(str(data[i][0][j][-1])+"\n")
-			filelist.write(gt[i]['filename'].replace('jpg','h5')+"\n")
+			filelist.write(gt[i]['filename'].replace('jpg','xml')+"\n")
 	filelist.close()
 
 def main():
@@ -34,16 +34,18 @@ def main():
 	
 	txt_file = 'filelist'
 	root_path = './'
-	num_cls = 4
+	num_cls = 1
+	#num_cls = 4
 	# _ind_to_cate = {0: 'person'}
-	_ind_to_cate = {0: 'person',1: 'car', 2: 'bicycle',3:'tricycle'}
+	_ind_to_cate = {0: 'face'} #,1: 'car', 2: 'bicycle',3:'tricycle'}
+	#_ind_to_cate = {0: 'person',1: 'car', 2: 'bicycle',3:'tricycle'}
 
 	_cate_to_ind = {value:key for key,value in _ind_to_cate.items()}
 
 	all_iou_thr = [0.4,0.45]
 
 	all_image_res = get_res(num_cls,txt_file,root_path,_ind_to_cate)
-	root_path = ''
+	root_path = './data/'
 	all_gt_bbox, all_gt_label, all_gt_ignore = get_gt(txt_file,root_path,_cate_to_ind,mini_size=30*30)
 
 	map_results = np.empty(shape=[len(all_iou_thr),num_cls])

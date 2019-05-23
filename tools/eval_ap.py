@@ -17,7 +17,7 @@ def get_res(num_cls,txt_file,root_path,_ind_to_cate):
     for i in range(len(info)):
         per_image_res = []
         for k in range(num_cls):
-            cls_bbox = np.empty(shape=[0,4],dtype = float)
+            cls_bbox = np.empty(shape=[0,5],dtype = float)
             per_image_res.append(cls_bbox)
 
         line = info[i].strip('\n')
@@ -28,7 +28,7 @@ def get_res(num_cls,txt_file,root_path,_ind_to_cate):
         res_file = root_path + res
         _res = open(res_file,'r')
         res = _res.readlines()
-        bboxes = np.empty(shape=[0,4],dtype=float)
+        bboxes = np.empty(shape=[0,5],dtype=float)
         label = []
         for k in range(len(res)):
             res_ = res[k].strip('\n').split()
@@ -36,7 +36,8 @@ def get_res(num_cls,txt_file,root_path,_ind_to_cate):
             y1 = float(res_[1])
             x2 = float(res_[2])
             y2 = float(res_[3])
-            bboxes = np.append(bboxes,[[x1,y1,x2,y2]],axis=0)
+            score = float(res_[5])
+            bboxes = np.append(bboxes,[[x1,y1,x2,y2,score]],axis=0)
             label.append(int(res_[4]))
 
         assert len(label)==len(bboxes)
@@ -294,6 +295,11 @@ def tpfp_imagenet(det_bboxes,
                 area = (bbox[2] - bbox[0] + 1) * (bbox[3] - bbox[1] + 1)
                 if area >= min_area and area < max_area:
                     fp[k, i] = 1
+<<<<<<< HEAD
+    #print("tp",tp)
+    #print("fp",fp)
+=======
+>>>>>>> a3d5c3dd9d49253ebe402009c5af7d904fadc02c
     return tp, fp
 
 def get_cls_results(det_results, gt_bboxes, gt_labels, gt_ignore, class_id):

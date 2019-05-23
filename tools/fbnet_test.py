@@ -56,7 +56,7 @@ def single_test(model, data_loader, show=False):
             prog_bar.update()
     torch.cuda.synchronize()
     end = time.time()
-    print((end-start))
+    print("avg forward time:",(end-start)/i)
     return results
 
 
