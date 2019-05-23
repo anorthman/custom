@@ -234,7 +234,7 @@ class ResNetBasicBlock(nn.Module):
     #   m['shuffle1'] = ChannelShuffle(groups)
     m['bn1'] = nn.BatchNorm2d(_out)
     m['relu1'] = nn.ReLU(inplace=True)
-    m['conv2'] = nn.Conv2d(_in, _out*expansion, kernel_size=kernel_size, stride=1, padding=1, bias=False)
+    m['conv2'] = nn.Conv2d(_out, _out*expansion, kernel_size=kernel_size, stride=1, padding=padding, bias=False)
     # if shuffle and groups > 1:
     #   m['shuffle2'] = ChannelShuffle(groups)
     m['bn2'] = nn.BatchNorm2d(_out*expansion)

@@ -20,6 +20,7 @@ def split_data(imglist, data_name, classes, min_scale, data_root='./data/'):
             img_path, label_path, height, width = lines[i].strip().split()
             h = int(height)
             w = int(width)
+            label_path = data_root+label_path
             bbs, labels, bbs_ignore, labels_ignore = _load_gt(label_path, h, w, min_scale, classes)
             if bbs.size == 0:
                 continue
@@ -53,6 +54,7 @@ def split_data(imglist, data_name, classes, min_scale, data_root='./data/'):
             img_path, label_path, height, width = lines[i].strip().split()
             h = int(height)
             w = int(width)
+            label_path = data_root+label_path
             bbs, labels, bbs_ignore, labels_ignore = _load_gt(label_path, h, w, min_scale, classes)
             if bbs.size == 0:
                 continue

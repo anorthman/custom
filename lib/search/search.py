@@ -79,7 +79,7 @@ class fbnet_search(object):
         loss, lateloss = self.model(**input)
         loss, self.loss_vars = parse_losses(loss)
         self.lateloss = self.alpha*(lateloss.mean().log().pow(self.beta))
-        loss = loss + self.lateloss
+        #loss = loss + self.lateloss
         loss.backward()
         _optim.step()
         self.w_lr_scheduler.step()
@@ -89,7 +89,7 @@ class fbnet_search(object):
         loss, lateloss = self.model(**input)
         loss, self.loss_vars = parse_losses(loss)
         self.lateloss = self.alpha*(lateloss.mean().log().pow(self.beta))
-        loss = loss + self.lateloss
+        #loss = loss + self.lateloss
         loss.backward()
         _optim.step()
         
