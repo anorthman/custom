@@ -18,10 +18,10 @@ from search.search import fbnet_search
 from tools.convert_custom import split_data
 
 class detection(nn.Module):
-    def __init__(self, cfg, train_cfg, test_cfg, base, depth, space, speed_txt):
+    def __init__(self, cfg, train_cfg, test_cfg, search_cfg, speed_txt):
         super(detection, self).__init__()
         print(speed_txt)
-        self.fbnet = FBNet(base, depth, space, speed_txt=speed_txt)
+        self.fbnet = FBNet(search_cfg, speed_txt=speed_txt)
         self.detect = TwoStageDetector(cfg, train_cfg, test_cfg)
         self.theta = self.fbnet.theta
         self.temp = self.fbnet.temp
@@ -55,9 +55,10 @@ def main():
 
     search_cfg = mmcv_config.fromfile(args.fb_cfg)
     _space = search_cfg.search_space
-    base = _space['base']
-    depth = _space['depth']
-    space = _space['space']
+    print(_space)
+    # base = _space['base']
+    # depth = _space['depth']
+    # space = _space['space']
 
     model_cfg = mmcv_config.fromfile(args.model_cfg)
     # # dataset settings
@@ -106,7 +107,7 @@ def main():
     det = detection(mmcv_config(model_cfg['model_cfg']), 
                     mmcv_config(model_cfg['train_cfg']), 
                     mmcv_config(model_cfg['test_cfg']),
-                    _space['base'], _space['depth'], _space['space'],
+                    _space,
                     speed_txt=args.speed_txt)
     print(det)
     searcher = fbnet_search(det, gpus, imgs_per_gpu=8,              
