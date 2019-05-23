@@ -14,6 +14,7 @@ from mmdet.apis.train import parse_losses
 from backbone.fbnet import FBNet
 from utils import _logger
 from model.two_stage import TwoStageDetector
+from model.single_stage import SingleStageDetector
 from search.search import fbnet_search
 from tools.convert_custom import split_data
 from register import DETECTORS 
