@@ -5,6 +5,9 @@ from .test_mixins import RPNTestMixin, BBoxTestMixin, MaskTestMixin
 from mmdet.models import builder
 from mmdet.models import build_head, build_roi_extractor, build_neck
 from mmdet.core import bbox2roi, bbox2result, build_assigner, build_sampler
+from register import DETECTORS
+
+@DETECTORS.register_module
 class TwoStageDetector(BaseDetector,RPNTestMixin, BBoxTestMixin, MaskTestMixin):
     """Head for classification.
     Two stage.
