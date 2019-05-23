@@ -61,16 +61,16 @@ def main():
 
     model_cfg = mmcv_config.fromfile(args.model_cfg)
     # # dataset settings
-    classes = ['background', 'car']
+    classes = ['background', 'face']
     min_scale = 0
-    w_data, t_data=split_data('/home1/zhaoyu//dataset/pbtc/raw/info/test_img_label_size_2000', 
-                    'testcar', classes, min_scale)
+    w_data, t_data=split_data('./data/libraf2_imglist', 
+                    'libraf2_face', classes, min_scale)
     img_norm_cfg = dict(
         mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True)
     w_data_cfg = dict(train=dict(
             # ann_file='/home1/zhaoyu/dataset/car_w.pkl',
             ann_file=w_data,
-            img_prefix="",
+            img_prefix="./data/",
             img_scale=(1000, 320),
             img_norm_cfg=img_norm_cfg,
             size_divisor=32,
@@ -82,7 +82,7 @@ def main():
     t_data_cfg = dict(train=dict(
             # ann_file='/home1/zhaoyu/dataset/car_t.pkl',
             ann_file=t_data,
-            img_prefix="",
+            img_prefix="./data/",
             img_scale=(1000, 320),
             img_norm_cfg=img_norm_cfg,
             size_divisor=32,
@@ -90,7 +90,7 @@ def main():
             with_mask=False,
             with_crowd=True,
             with_label=True))
-    gpus = [0,1]
+    gpus = [0,1,2,3,4,5,6]
     w_dataset = CustomDataset(**w_data_cfg['train'])
     w_dataset = build_dataloader(w_dataset, imgs_per_gpu=16,
                        workers_per_gpu=2,
@@ -109,6 +109,9 @@ def main():
                     _space['base'], _space['depth'], _space['space'],
                     speed_txt=args.speed_txt)
     print(det)
+    save_result_path = "./theta/"+args.fb_cfg.split('/')[-1][:-3]+'_'+args.model_cfg.split('/')[-1][:-3]
+    if not os.path.exists(save_result_path):
+        os.makedirs(save_result_path)
     searcher = fbnet_search(det, gpus, imgs_per_gpu=8,              
                             weight_opt_dict={'type':'SGD',
                                             'lr':0.01,
@@ -125,16 +128,13 @@ def main():
                                               'warmup_step' : 100,
                                               't_mul' : 1.5,
                                               'lr_mul' : 0.95,
-                                            },alpha=0.1)
-    save_result_path = "./theta/"+args.fb_cfg.split('/')[-1][:-3]+'_'+args.model_cfg.split('/')[-1][:-3]
-    if not os.path.exists(save_result_path):
-        os.makedirs(save_result_path)
+                                            },alpha=0.1,
+                            save_result_path=save_result_path)
     searcher.search(
                 train_w_ds = w_dataset,
                 train_t_ds = t_dataset,
                 epoch=50,
-                start_w_epoch=20,
-                log_frequence=10,
-                save_result_path=save_result_path)
+                start_w_epoch=10,
+                log_frequence=10)
 if __name__ == "__main__":
     main()
