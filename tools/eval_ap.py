@@ -295,8 +295,11 @@ def tpfp_imagenet(det_bboxes,
                 area = (bbox[2] - bbox[0] + 1) * (bbox[3] - bbox[1] + 1)
                 if area >= min_area and area < max_area:
                     fp[k, i] = 1
+<<<<<<< HEAD
     #print("tp",tp)
     #print("fp",fp)
+=======
+>>>>>>> a3d5c3dd9d49253ebe402009c5af7d904fadc02c
     return tp, fp
 
 def get_cls_results(det_results, gt_bboxes, gt_labels, gt_ignore, class_id):
