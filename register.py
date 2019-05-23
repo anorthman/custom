@@ -39,3 +39,4 @@ class Registry(object):
         return cls
 
 BASICUNIT = Registry('basic_unit')
+DETECTORS = Registry('detector')
