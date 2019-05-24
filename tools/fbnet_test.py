@@ -19,7 +19,7 @@ from torch import nn
 import time
 from register import DETECTORS 
 from model.single_stage import SingleStageDetector
-
+import numpy as np
 class detection(nn.Module):
     def __init__(self, cfg, train_cfg, test_cfg, search_cfg, theta_txt):
         super(detection, self).__init__()
@@ -28,10 +28,7 @@ class detection(nn.Module):
         # self.init_weights()
     def forward(self, **input):
         input["img"] = self.fbnet(input.pop('img')[0])
-        # input['img'] = [input['img']]
-        print(type(input['img']))
         loss = self.detect(**input)
-        #loss, self.loss_vars = parse_losses(loss)
         return loss
     def init_weights(self):
         return self.fbnet.init_weights()
@@ -112,7 +109,7 @@ def main():
             mmcv_config(cfg['model_cfg']), 
             mmcv_config(cfg['train_cfg']), 
             mmcv_config(cfg['test_cfg']),
-            _sapce,
+            _space,
             args.theta_txt)
         # model = build_detector(
         #     cfg.model, train_cfg=None, test_cfg=cfg.test_cfg)

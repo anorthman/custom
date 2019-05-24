@@ -157,7 +157,6 @@ class TwoStageDetector(BaseDetector,RPNTestMixin, BBoxTestMixin, MaskTestMixin):
     def simple_test(self, img, img_meta, proposals=None, rescale=False):
         """Test without augmentation."""
         assert self.with_bbox, "Bbox head must be implemented."
-        img = [img]
         #x = self.extract_feat(img)
         if self.with_neck:
               x = self.neck(img)

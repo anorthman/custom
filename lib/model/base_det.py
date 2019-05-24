@@ -60,18 +60,17 @@ class BaseDetector(nn.Module):
             if not isinstance(var, list):
                 raise TypeError('{} must be a list, but got {}'.format(
                     name, type(var)))
-
-        num_augs = len(imgs)
+        num_augs = imgs[0].size(0)
         if num_augs != len(img_metas):
             raise ValueError(
                 'num of augmentations ({}) != num of image meta ({})'.format(
                     len(imgs), len(img_metas)))
-        # TODO: remove the restriction of imgs_per_gpu == 1 when prepared
+         #TODO: remove the restriction of imgs_per_gpu == 1 when prepared
         imgs_per_gpu = imgs[0].size(0)
         assert imgs_per_gpu == 1
 
         if num_augs == 1:
-            return self.simple_test(imgs[0], img_metas[0], **kwargs)
+            return self.simple_test(imgs, img_metas[0], **kwargs)
         else:
             return self.aug_test(imgs, img_metas, **kwargs)
 
