@@ -17,16 +17,16 @@ from backbone import FBNet_sample
 from mmcv import Config as mmcv_config
 from torch import nn
 import time
+from register import DETECTORS 
+from model.single_stage import SingleStageDetector
 
 class detection(nn.Module):
-    def __init__(self, cfg, train_cfg, test_cfg, base, depth, space, theta_txt):
+    def __init__(self, cfg, train_cfg, test_cfg, search_cfg, theta_txt):
         super(detection, self).__init__()
-        self.fbnet = FBNet_sample(base, depth, space, theta_txt)
-        self.detect = TwoStageDetector(cfg, train_cfg, test_cfg)
+        self.fbnet = FBNet_sample(search_cfg, theta_txt)
+        self.detect = DETECTORS[cfg['type']](cfg, train_cfg, test_cfg)
         # self.init_weights()
     def forward(self, **input):
-        #input["x"] = self.resnet50(input.pop('img'))
-        #input["x"] = self.fbnet(input.pop('img'),input.pop('temp'))
         input["img"] = self.fbnet(input.pop('img')[0])
         # input['img'] = [input['img']]
         print(type(input['img']))
@@ -95,9 +95,6 @@ def main():
     args = parse_args()
     search_cfg = mmcv_config.fromfile(args.fb_cfg)
     _space = search_cfg.search_space
-    base = _space['base']
-    depth = _space['depth']
-    space = _space['space']
     if args.out is not None and not args.out.endswith(('.pkl', '.pickle')):
         raise ValueError('The output file must be a pkl file.')
 
@@ -115,7 +112,7 @@ def main():
             mmcv_config(cfg['model_cfg']), 
             mmcv_config(cfg['train_cfg']), 
             mmcv_config(cfg['test_cfg']),
-            base, depth, space,
+            _sapce,
             args.theta_txt)
         # model = build_detector(
         #     cfg.model, train_cfg=None, test_cfg=cfg.test_cfg)
