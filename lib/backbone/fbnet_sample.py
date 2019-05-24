@@ -13,22 +13,21 @@ import time
 import logging
 import copy
 class FBNet_sample(nn.Module):
-    def __init__(self, base, depth, space, theta_txt,
+    def __init__(self, search_cfg, theta_txt,
                 skip=True,
                 ):
         super(FBNet_sample, self).__init__()
 
         self.skip = skip 
-        self.space = space
-        self.depth = depth
-        self.depth_num = sum(depth)
+        self.space = search_cfg['space']
+        self.depth = search_cfg['depth']
+        self.depth_num = sum(self.depth)
         self.num = len(self.space)
         self.theta_txt = theta_txt
-        self.ft_map = list(accumulate(self.depth))
-        self.ft = [0,0,1,0]
+        self.out = [list(accumulate(self.depth))[z]-1 for z in search_cfg['out']]
         self.logger = logging
-        self.baseconv = nn.Conv2d(**base)
-        self.bn1 = nn.BatchNorm2d(base['out_channels'])
+        self.baseconv = nn.Conv2d(**search_cfg['base'])
+        self.bn1 = nn.BatchNorm2d(search_cfg['base']['out_channels'])
         self.relu1 = nn.ReLU(inplace=True)
         self._ops = self.build()
 
@@ -82,13 +81,10 @@ class FBNet_sample(nn.Module):
         x = self.bn1(x)
         x = self.relu1(x)
         outs = []
-        j = 0
         for i in range(len(self._ops)):
             x = self._ops[i](x)
-            if i == self.ft_map[j]-1:
-                if self.ft[j] == 1:
-                    outs.append(x)
-                j += 1
+            if i in self.out:
+                outs.append(x)
         return outs 
 
     def init_weights(self, pretrained=None):

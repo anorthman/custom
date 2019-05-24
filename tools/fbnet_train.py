@@ -19,12 +19,13 @@ import time
 from search.search import fbnet_search
 from mmdet.datasets import CocoDataset, build_dataloader, CustomDataset
 from mmcv.parallel import MMDataParallel
-
+from register import DETECTORS 
+from model.single_stage import SingleStageDetector
 class detection(nn.Module):
-    def __init__(self, cfg, train_cfg, test_cfg, base, depth, space, theta_txt):
+    def __init__(self, cfg, train_cfg, test_cfg, search_cfg, theta_txt):
         super(detection, self).__init__()
-        self.fbnet = FBNet_sample(base, depth, space, theta_txt)
-        self.detect = TwoStageDetector(cfg, train_cfg, test_cfg)
+        self.fbnet = FBNet_sample(search_cfg, theta_txt)
+        self.detect = DETECTORS[cfg['type']](cfg, train_cfg, test_cfg)
         self.init_weights()
     def forward(self, **input):
         input["img"] = self.fbnet(input.pop('img'))
@@ -76,9 +77,9 @@ def main():
     args = parse_args()
     fb_cfg = mmcv_config.fromfile(args.fb_cfg)
     _space = fb_cfg.search_space
-    base = _space['base']
-    depth = _space['depth']
-    space = _space['space']
+    # base = _space['base']
+    # depth = _space['depth']
+    # space = _space['space']
 
     model_cfg = mmcv_config.fromfile(args.model_cfg)
     # set cudnn_benchmark
@@ -113,7 +114,7 @@ def main():
     model = detection(mmcv_config(model_cfg['model_cfg']), 
                         mmcv_config(model_cfg['train_cfg']), 
                         mmcv_config(model_cfg['test_cfg']), 
-                        base, depth, space,
+                        _space,
                         args.theta_txt)
     print(model)
     train_dataset = get_dataset(model_cfg.data.train)
