@@ -7,43 +7,47 @@ from register import BASICUNIT
 from collections import OrderedDict
 
 # shufflenet_v2_baseunit
-class shufv2BasicUnit(nn.Module):
-    def __init__(self, _in, out_out, stride=1, c_tag=0.5, activation=nn.ReLU, SE=False, residual=False, groups=2):
-        super(BasicUnit, self).__init__()
-        self.left_part = round(c_tag * _in)
-        self.right_part_in = _in - self.left_part
-        self.right_part_out = out_out - self.left_part
-        self.conv1 = nn.Conv2d(self.right_part_in, self.right_part_out, kernel_size=1, bias=False)
-        self.bn1 = nn.BatchNorm2d(self.right_part_out)
-        self.conv2 = nn.Conv2d(self.right_part_out, self.right_part_out, kernel_size=3, padding=1, bias=False,
-                               groups=self.right_part_out)
-        self.bn2 = nn.BatchNorm2d(self.right_part_out)
-        self.conv3 = nn.Conv2d(self.right_part_out, self.right_part_out, kernel_size=1, bias=False)
-        self.bn3 = nn.BatchNorm2d(self.right_part_out)
-
-        self.conv1r = nn.Conv2d(_in, _in, kernel_size=1, bias=False)
-        self.bn1r = nn.BatchNorm2d(_in)
-        self.conv2r = nn.Conv2d(_in, _in, kernel_size=3, stride=2, padding=1, bias=False, groups=_in)
-        self.bn2r = nn.BatchNorm2d(_in)
-        self.conv3r = nn.Conv2d(_in, out_out/2, kernel_size=1, bias=False)
-        self.bn3r = nn.BatchNorm2d(_in)
-
-        self.conv1l = nn.Conv2d(_in, _in, kernel_size=3, stride=2, padding=1, bias=False, groups=_in)
-        self.bn1l = nn.BatchNorm2d(_in)
-        self.conv2l = nn.Conv2d(_in, out_out/2, kernel_size=1, bias=False)
-        self.bn2l = nn.BatchNorm2d(_in)
-
-        self.activation = activation(inplace=True)
-        self.channel_shuffle = ChannelShuffle(group=groups)
-
+@BASICUNIT.register_module
+class Shufv2Unit(nn.Module):
+    def __init__(self, _in, _out, kernel_size=3, padding=1, stride=1, c_tag=0.5, activation=nn.ReLU, SE=False, residual=False, groups=2):
+        super(Shufv2Unit, self).__init__()
         self.stride = stride
         self._in = _in
-        self.out_out = out_out
-        self.residual = residual
+        self._out = _out
         self.groups = groups
-        self.SE = SE
-        if self.SE:
-            self.SELayer = SELayer(self.right_part_out, 2)  # TODO
+        self.activation = activation(inplace=True)
+        self.channel_shuffle = ChannelShuffle(group=groups)
+        if self.stride == 1:
+            assert _out == _in                    
+            self.left_part = round(c_tag * _in)
+            self.right_part_in = _in - self.left_part
+            self.right_part_out = _out - self.left_part
+            self.conv1 = nn.Conv2d(self.right_part_in, self.right_part_out, kernel_size=1, bias=False)
+            self.bn1 = nn.BatchNorm2d(self.right_part_out)
+            self.conv2 = nn.Conv2d(self.right_part_out, self.right_part_out, kernel_size=kernel_size, padding=padding, bias=False,
+                                   groups=self.right_part_out)
+            self.bn2 = nn.BatchNorm2d(self.right_part_out)
+            self.conv3 = nn.Conv2d(self.right_part_out, self.right_part_out, kernel_size=1, bias=False)
+            self.bn3 = nn.BatchNorm2d(self.right_part_out)
+        elif self.stride == 2:
+            assert _out == _in * 2
+            self.conv1r = nn.Conv2d(_in, _in, kernel_size=1, bias=False)
+            self.bn1r = nn.BatchNorm2d(_in)
+            self.conv2r = nn.Conv2d(_in, _in, kernel_size=kernel_size, stride=stride, padding=padding, bias=False, groups=_in)
+            self.bn2r = nn.BatchNorm2d(_in)
+            self.conv3r = nn.Conv2d(_in, _in, kernel_size=1, bias=False)
+            self.bn3r = nn.BatchNorm2d(_in)
+
+            self.conv1l = nn.Conv2d(_in, _in, kernel_size=kernel_size, stride=stride, padding=padding, bias=False, groups=_in)
+            self.bn1l = nn.BatchNorm2d(_in)
+            self.conv2l = nn.Conv2d(_in, _in, kernel_size=1, bias=False)
+            self.bn2l = nn.BatchNorm2d(_in)
+        else:
+            raise ValueError   
+
+        # self.SE = SE
+        # if self.SE:
+        #     self.SELayer = SELayer(self.right_part_out, 2)  # TODO
 
     def forward(self, x):
         if self.stride == 1:
@@ -60,10 +64,10 @@ class shufv2BasicUnit(nn.Module):
             out = self.bn3(out)
             out = self.activation(out)
 
-            if self.SE:
-                out = self.SELayer(out)
-            if self.residual and self._in == self.out_out:
-                out += right
+            # if self.SE:
+            #     out = self.SELayer(out)
+            # if self.residual and self._in == self._out:
+            #     out += right
             out = self.channel_shuffle(torch.cat((left, out), 1))
         elif self.stride == 2:
             out_r = self.conv1r(x)
@@ -136,7 +140,7 @@ class shufv2DownsampleUnit(nn.Module):
         return out
 
 class pz_BasicUnit(nn.Module):
-    def __init__(self, _in, out_out, activation=nn.ReLU, SE=False, residual=False, groups=2):
+    def __init__(self, _in, _out, activation=nn.ReLU, SE=False, residual=False, groups=2):
         super(pz_BasicUnit, self).__init__()
 
         self.conv1 = nn.Conv2d(_in, _in, kernel_size=3, stride=1, padding=1, bias=False, groups=_in)
@@ -145,8 +149,8 @@ class pz_BasicUnit(nn.Module):
         self.bn2 = nn.BatchNorm2d(_in)
         self.conv3 = nn.Conv2d(_in, _in, kernel_size=3, stride=1, padding=1, bias=False, groups=_in)
         self.bn3 = nn.BatchNorm2d(_in)
-        self.conv4 = nn.Conv2d(_in,out_out, kernel_size=1, bias=False)
-        self.bn4 = nn.BatchNorm2d(out_out)
+        self.conv4 = nn.Conv2d(_in,_out, kernel_size=1, bias=False)
+        self.bn4 = nn.BatchNorm2d(_out)
         self.activation = activation(inplace=True)
 
     def forward(self, x):
@@ -168,12 +172,12 @@ class pz_BasicUnit(nn.Module):
 
         if self.SE:
             out4 = self.SELayer(out4)
-        if self.residual and self._in == self.out_out:
+        if self.residual and self._in == self._out:
             out4 += x
         return out4
 
 class pz_DownsampleUnit(nn.Module):
-    def __init__(self, _in, out_out, activation=nn.ReLU, SE=False, residual=True, groups=2):
+    def __init__(self, _in, _out, activation=nn.ReLU, SE=False, residual=True, groups=2):
         super(pz_BasicUnit, self).__init__()
 
         self.conv1 = nn.Conv2d(_in, _in, kernel_size=3, stride=1, padding=1, bias=False, groups=_in)
@@ -182,8 +186,8 @@ class pz_DownsampleUnit(nn.Module):
         self.bn2 = nn.BatchNorm2d(_in)
         self.conv3 = nn.Conv2d(_in, _in, kernel_size=3, stride=1, padding=1, bias=False, groups=_in)
         self.bn3 = nn.BatchNorm2d(_in)
-        self.conv4 = nn.Conv2d(_in,out_out, kernel_size=1, bias=False)
-        self.bn4 = nn.BatchNorm2d(out_out)
+        self.conv4 = nn.Conv2d(_in,_out, kernel_size=1, bias=False)
+        self.bn4 = nn.BatchNorm2d(_out)
         self.activation = activation(inplace=True)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
         self.avepool = nn.Avepool2d(kernel_size=3, stride=2, padding=1)
