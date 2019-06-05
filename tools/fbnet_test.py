@@ -27,6 +27,8 @@ class detection(nn.Module):
         self.detect = DETECTORS[cfg['type']](cfg, train_cfg, test_cfg)
         # self.init_weights()
     def forward(self, **input):
+        print('img',input['img'])
+        exit()
         input["img"] = self.fbnet(input.pop('img')[0])
         loss = self.detect(**input)
         return loss
@@ -46,7 +48,7 @@ def single_test(model, data_loader, show=False):
         results.append(result)
         if show:
             model.module.detect.show_result(data, result, dataset.img_norm_cfg,
-                                     dataset=dataset.CLASSES, score_thr=0.6)
+                                     dataset=dataset.CLASSES, score_thr=0.5)
 
         batch_size = data['img'][0].size(0)
         for _ in range(batch_size):
