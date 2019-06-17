@@ -21,6 +21,8 @@ from mmdet.datasets import CocoDataset, build_dataloader, CustomDataset
 from mmcv.parallel import MMDataParallel
 from register import DETECTORS 
 from model.single_stage import SingleStageDetector
+#import torch.multiprocessing
+#torch.multiprocessing.set_sharing_strategy('file_system')
 class detection(nn.Module):
     def __init__(self, cfg, train_cfg, test_cfg, search_cfg, theta_txt):
         super(detection, self).__init__()

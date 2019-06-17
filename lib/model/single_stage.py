@@ -54,6 +54,12 @@ class SingleStageDetector(BaseDetector):
         if self.with_neck:
             x = self.neck(img)
         outs = self.bbox_head(x)
+        #for out in outs:
+        #    for t in out:
+        #        print(t.size())
+        #        print(t)
+        #print("over")
+        #exit()
         bbox_inputs = outs + (img_meta, self.test_cfg, rescale)
         bbox_list = self.bbox_head.get_bboxes(*bbox_inputs)
         bbox_results = [

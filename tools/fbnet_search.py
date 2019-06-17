@@ -18,6 +18,8 @@ from model.single_stage import SingleStageDetector
 from search.search import fbnet_search
 from tools.convert_custom import split_data
 from register import DETECTORS 
+import torch.multiprocessing
+torch.multiprocessing.set_sharing_strategy('file_system')
 
 class detection(nn.Module):
     def __init__(self, cfg, train_cfg, test_cfg, search_cfg, speed_txt):
@@ -65,15 +67,17 @@ def main():
     # # dataset settings
     classes = ['background', 'face']
     min_scale = 0
-    w_data, t_data=split_data('./data/libraf2_imglist', 
-                    'libraf2_face', classes, min_scale)
+    #w_data, t_data=split_data('./data/libraf2_imglist', 
+    #                'libraf2_face', classes, min_scale)
+    w_data, t_data=split_data('./data/newlibraf_info/train_imglist', 
+                    './newlibraf_info/newlibraf_face', classes, min_scale)
     img_norm_cfg = dict(
         mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True)
     w_data_cfg = dict(train=dict(
             # ann_file='/home1/zhaoyu/dataset/car_w.pkl',
             ann_file=w_data,
             img_prefix="./data/",
-            img_scale=(1000, 320),
+            img_scale=(1000, 216),
             img_norm_cfg=img_norm_cfg,
             size_divisor=32,
             flip_ratio=0.5,
@@ -85,17 +89,17 @@ def main():
             # ann_file='/home1/zhaoyu/dataset/car_t.pkl',
             ann_file=t_data,
             img_prefix="./data/",
-            img_scale=(1000, 320),
+            img_scale=(1000, 216),
             img_norm_cfg=img_norm_cfg,
             size_divisor=32,
             flip_ratio=0.5,
             with_mask=False,
             with_crowd=True,
             with_label=True))
-    gpus = [0,1,2,3,4,5,6]
+    gpus = [0,2,3,4,5,6]
     w_dataset = CustomDataset(**w_data_cfg['train'])
     w_dataset = build_dataloader(w_dataset, imgs_per_gpu=16,
-                       workers_per_gpu=2,
+                       workers_per_gpu=4,
                        dist=False,
                        num_gpus=len(gpus))
 
@@ -127,7 +131,7 @@ def main():
                                               'logger' : _logger,
                                               'T_max' : 400,
                                               'alpha' : 1e-4,
-                                              'warmup_step' : 100,
+                                              'warmup_step' : 1000,
                                               't_mul' : 1.5,
                                               'lr_mul' : 0.95,
                                             },alpha=0.1,
@@ -135,8 +139,8 @@ def main():
     searcher.search(
                 train_w_ds = w_dataset,
                 train_t_ds = t_dataset,
-                epoch=50,
-                start_w_epoch=10,
+                epoch=100,
+                start_w_epoch=5,
                 log_frequence=10)
 if __name__ == "__main__":
     main()

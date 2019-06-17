@@ -20,7 +20,6 @@ import time
 from register import DETECTORS 
 from model.single_stage import SingleStageDetector
 import numpy as np
-np.set_printoptions(threshold=np.inf) 
 class detection(nn.Module):
     def __init__(self, cfg, train_cfg, test_cfg, search_cfg, theta_txt):
         super(detection, self).__init__()
@@ -28,17 +27,6 @@ class detection(nn.Module):
         self.detect = DETECTORS[cfg['type']](cfg, train_cfg, test_cfg)
         # self.init_weights()
     def forward(self, **input):
-        print("\n")
-        #im = input['img'][0].cpu().numpy()
-        #with open('im','w') as g:
-        #    for i in range(im.shape[1]):
-        #        for j in range(im.shape[2]):
-        #            for k in range(im.shape[3]):
-        #                g.write(str(im[0][i][j][k]))
-        #                g.write('\n')
-        #print('img',input['img'][0].shape)
-        #input['img'][0] = torch.ones((1,3,224,384)).cuda()
-        #exit()
         input["img"] = self.fbnet(input.pop('img')[0])
         loss = self.detect(**input)
         return loss
@@ -47,8 +35,6 @@ class detection(nn.Module):
 
 def single_test(model, data_loader, show=False):
     model.eval()
-    #print(model.state_dict()['module.fbnet._ops.0.bn2r.running_mean'])
-    #exit()
     results = []
     dataset = data_loader.dataset
     prog_bar = mmcv.ProgressBar(len(dataset))
@@ -60,7 +46,7 @@ def single_test(model, data_loader, show=False):
         results.append(result)
         if show:
             model.module.detect.show_result(data, result, dataset.img_norm_cfg,
-                                     dataset=dataset.CLASSES, score_thr=0.3)
+                                     dataset=dataset.CLASSES, score_thr=0.5)
 
         batch_size = data['img'][0].size(0)
         for _ in range(batch_size):
