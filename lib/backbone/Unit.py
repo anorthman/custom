@@ -76,19 +76,22 @@ class Shufv2Unit(nn.Module):
 
             out_r = self.conv2r(out_r)
             out_r = self.bn2r(out_r)
-
             out_r = self.conv3r(out_r)
             out_r = self.bn3r(out_r)
             out_r = self.activation(out_r)
+            #print(out_r)
+            #print(out_r.size())
+            #exit()
 
             out_l = self.conv1l(x)
             out_l = self.bn1l(out_l)
-
             out_l = self.conv2l(out_l)
             out_l = self.bn2l(out_l)
             out_l = self.activation(out_l)
-
             out = self.channel_shuffle(torch.cat((out_r, out_l), 1))
+            #print(out)
+            #print(out.size())
+            #exit()
         else:
             raise ValueError            
 

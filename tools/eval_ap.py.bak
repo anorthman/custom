@@ -2,7 +2,6 @@ import json
 import numpy as np
 from xml.dom.minidom import parse
 import xmltodict
-import cv2
 from terminaltables import AsciiTable
 import os
 import h5py
@@ -12,13 +11,12 @@ def get_res(num_cls,txt_file,root_path,_ind_to_cate):
 	all_image_res = []
 
 	f = open(txt_file,'r')
-	# print(txt_file)
 	info = f.readlines()
 
 	for i in range(len(info)):
 		per_image_res = []
 		for k in range(num_cls):
-			cls_bbox = np.empty(shape=[0,6],dtype = float)
+			cls_bbox = np.empty(shape=[0,5],dtype = float)
 			per_image_res.append(cls_bbox)
 
 		line = info[i].strip('\n')
@@ -27,11 +25,10 @@ def get_res(num_cls,txt_file,root_path,_ind_to_cate):
 			if line[j][-4:] == '.txt':
 				res = line[j]
 		res_file = root_path + res
-		#print(res_file)
 
 		_res = open(res_file,'r')
 		res = _res.readlines()
-		bboxes = np.empty(shape=[0,6],dtype=float)
+		bboxes = np.empty(shape=[0,5],dtype=float)
 		label = []
 		for k in range(len(res)):
 			res_ = res[k].strip('\n').split()
@@ -43,8 +40,7 @@ def get_res(num_cls,txt_file,root_path,_ind_to_cate):
 				x2 = float(res_[2])
 				y2 = float(res_[3])
 				score = float(res_[5])
-				image_id = i
-				bboxes = np.append(bboxes,[[x1,y1,x2,y2,image_id,score]],axis=0)
+				bboxes = np.append(bboxes,[[x1,y1,x2,y2,score]],axis=0)
 				label.append(int(res_[4]))
 
 		assert len(label)==len(bboxes)
@@ -80,14 +76,7 @@ def get_gt(txt_file,root_path,_cate_to_ind,mini_size=30*30):
 			if (line[j][-4:] == '.xml') or (line[j][-3:] == '.h5') :
 				gt = line[j]
 		gt_file = root_path+gt
-
-		txt_root =  './res_det'
-		if not os.path.exists(txt_root):
-			os.makedirs(txt_root)
-		gt_txt = './res_det/gt_bbox.txt'
-		if not os.path.exists(gt_txt):
-			os.system(r"touch {}".format(gt_txt))
-		f_gt = open(gt_txt,'a')
+		#print(gt_file)
 
 		if line[j][-4:] == '.xml':
 			import io
@@ -114,14 +103,13 @@ def get_gt(txt_file,root_path,_cate_to_ind,mini_size=30*30):
 						bb = [x1, y1, x2, y2]
 						bb = [int(x) for x in bb]
 						bb = [bb]
+
 					
 						if label in list(m.keys()):
 							m[label] = np.vstack((m[label],np.array(bb)))
 						else:
 							m[label] = np.array(bb)
-	
-
-			 
+				 
 			image_size = img_info
 			image_width = image_size[0]
 			image_height = image_size[1]
@@ -133,7 +121,7 @@ def get_gt(txt_file,root_path,_cate_to_ind,mini_size=30*30):
 				if key == 'img_info':
 					image_width = h5data[key][0]
 					image_height = h5data[key][1]
-				else:
+				elif key in list(_cate_to_ind.keys()):
 					label = _cate_to_ind[key]
 					m[label] = h5data[key][:]
 					m[label][:,3] += m[label][:,1]
@@ -163,21 +151,11 @@ def get_gt(txt_file,root_path,_cate_to_ind,mini_size=30*30):
 				per_image_gt_ignore.append(0)
 				
 			else:
-				if area<(image_width*image_height*mini_size)/(1920*1080):
-				#if area<(image_width*image_height)/(100):
+				#if area<(image_width*image_height*100)/(1920*1080):
+				if area<(image_width*image_height)/(829):
 					per_image_gt_ignore.append(1)
 				else:
 					per_image_gt_ignore.append(0)
-
-		for gt_i in range(len(per_image_gt_bbox)):
-			box_gt = per_image_gt_bbox[gt_i]
-			label_gt = per_image_gt_label[gt_i]
-			label_ignore_gt = per_image_gt_ignore[gt_i]
-			line = str(box_gt[0])+' '+str(box_gt[1])+' '+str(box_gt[2])+' '+str(box_gt[3])+' '+gt+' '+str(label_gt)+' '+str(label_ignore_gt)
-			
-			f_gt.writelines(line)
-			f_gt.writelines('\n')
-
 
 		per_image_gt_ignore = np.array(per_image_gt_ignore)
 
@@ -185,7 +163,19 @@ def get_gt(txt_file,root_path,_cate_to_ind,mini_size=30*30):
 		all_gt_label.append(per_image_gt_label)
 		all_gt_ignore.append(per_image_gt_ignore)
 
+
 	return all_gt_bbox, all_gt_label, all_gt_ignore
+
+#txt_file = 'data/res_gt.txt'
+#txt_file = 'data/test.txt'
+#root_path = '/media/clx/DATA/chelixuan/chelixuan_2019/eval_universal/eval_universial/'
+#_ind_to_cate = {0: 'person_normal'}
+#_ind_to_cate = {0:'person',1: 'bicycle',2:'car'}
+#_ind_to_cate = {0:'person',1: 'bicycle'}
+#_cate_to_ind = {value:key for key,value in _ind_to_cate.items()}
+#get_gt(txt_file,root_path,_cate_to_ind,mini_size=30*30)
+#exit()
+
 
 
 '''
@@ -263,6 +253,9 @@ def bbox_overlaps(bboxes1, bboxes2, mode='iou'):
 		ious[i, :] = overlap / union
 	if exchange:
 		ious = ious.T
+
+	#print('ious = ',ious)
+
 	return ious
 
 def tpfp_imagenet(det_bboxes,
@@ -291,7 +284,8 @@ def tpfp_imagenet(det_bboxes,
 	# of a certain scale.
 	tp = np.zeros((num_scales, num_dets), dtype=np.float32)
 	fp = np.zeros((num_scales, num_dets), dtype=np.float32)
-
+	#print(gt_bboxes.shape[0])
+	#exit()
 	if gt_bboxes.shape[0] == 0:
 		if area_ranges == [(None, None)]:
 			fp[...] = 1
@@ -344,6 +338,8 @@ def tpfp_imagenet(det_bboxes,
 				area = (bbox[2] - bbox[0] + 1) * (bbox[3] - bbox[1] + 1)
 				if area >= min_area and area < max_area:
 					fp[k, i] = 1
+	#print('tp = ',tp)
+	#print('fp = ', fp)
 	return tp, fp
 
 def get_cls_results(det_results, gt_bboxes, gt_labels, gt_ignore, class_id,_ind_to_cate):
@@ -394,6 +390,10 @@ def average_precision(recalls, precisions, mode='area'):
 		mpre = np.hstack((zeros, precisions, zeros))
 		for i in range(mpre.shape[1] - 1, 0, -1):
 			mpre[:, i - 1] = np.maximum(mpre[:, i - 1], mpre[:, i])
+		#print('mpre = ', mpre)
+		#print('mrec = ', mrec)
+		#print('num_scales = ', num_scales)
+		#print('\n')
 
 		for i in range(num_scales):
 			ind = np.where(mrec[i, 1:] != mrec[i, :-1])[0]
@@ -414,8 +414,7 @@ def average_precision(recalls, precisions, mode='area'):
 		ap = ap[0]
 	return ap
 
-def eval_map(txt_file,
-			det_results,
+def eval_map(det_results,
 			gt_bboxes,
 			gt_labels,
 			_ind_to_cate,
@@ -457,15 +456,8 @@ def eval_map(txt_file,
 	gt_labels = [ label if label.ndim == 1 else label[:, 0] for label in gt_labels]
 
 
-	txt_root =  './res_det'
-	if not os.path.exists(txt_root):
-		os.makedirs(txt_root)	
-	txt = './res_det/tpfp_dets_thr_'+ str(iou_thr)+'.txt'
-	if os.path.exists(txt):
-		os.remove(txt)
-
-
 	for i in range(num_classes):
+
 		# get gt and det bboxes of this class
 		cls_dets, cls_gts, cls_gt_ignore = get_cls_results(
 			det_results, gt_bboxes, gt_labels, gt_ignore, i,_ind_to_cate)
@@ -476,40 +468,11 @@ def eval_map(txt_file,
 			tpfp_func(cls_dets[j], cls_gts[j], cls_gt_ignore[j], iou_thr,
 				area_ranges) for j in range(len(cls_dets))
 		]
+
 		tp, fp = tuple(zip(*tpfp))
+		#print('tp = ', tp)
+		#exit()
 
-
-		# added at 2019.06.03 print all-&-wrong detect bbox ---- tp & fp
-		for wrong in range(len(cls_dets)):
-			w_box = cls_dets[wrong]
-			w_fp = fp[wrong].tolist()[0]
-
-			wrong_dets = open(txt,'a')
-
-			f = open(txt_file,'r')
-			info = f.readlines()
-
-
-			keys = list(_ind_to_cate.keys())
-			key = keys[i]
-			cate = _ind_to_cate[key]
-
-			for w_ in range(len(w_fp)):
-				index_ = w_fp[w_] # 0 or 1
-				w_box_ = w_box[w_].tolist()
-				info_line = info[int(w_box_[4])]
-				info_line = info_line.split()
-				info_line = [x for x in info_line if x[-4:]=='.xml' or x[-3:]=='.h5'][0]
-				
-				line = w_box_ + [key] + [index_]
-				line[4] = info_line
-
-				line_ = ""
-				for _w in range(len(line)):
-					line_ = line_ + str(line[_w]) + ' '
-
-				wrong_dets.writelines(line_)
-				wrong_dets.write('\n')
 
 		# calculate gt number of each scale, gts ignored or beyond scale
 		# are not counted
@@ -527,12 +490,10 @@ def eval_map(txt_file,
 		
 		# sort all det bboxes by score, also sort tp and fp
 		cls_dets = np.vstack(cls_dets)
-
+		#print('cls_dets = ',cls_dets)
 
 		num_dets = cls_dets.shape[0]
 		sort_inds = np.argsort(-cls_dets[:, -1])
-
-
 		
 		tp = np.hstack(tp)[:, sort_inds]
 		fp = np.hstack(fp)[:, sort_inds]
@@ -544,6 +505,16 @@ def eval_map(txt_file,
 		recalls = tp / np.maximum(num_gts[:, np.newaxis], eps)
 		precisions = tp / np.maximum((tp + fp), eps)
 
+		#print('recalls = ', recalls)
+		#print('precisions = ', precisions)
+		#print('\n')
+		#exit()
+
+		#print_pr_curve(root_path,_ind_to_cate,all_iou_thr,recalls,precisions)
+
+
+
+
 		# calculate AP
 		if scale_ranges is None:
 			recalls = recalls[0, :]
@@ -551,7 +522,8 @@ def eval_map(txt_file,
 			num_gts = num_gts.item()
 		mode = 'area' 
 		ap = average_precision(recalls, precisions, mode)
-
+		#print('ap = ',ap)
+		#print('\n')
 		eval_results.append({
 			'num_gts': num_gts,
 			'num_dets': num_dets,
@@ -579,8 +551,6 @@ def eval_map(txt_file,
 		print_map_summary(mean_ap, eval_results, dataset)
 
 	return mean_ap, eval_results
-
-
 
 def print_map_summary(mean_ap, results, dataset=None):
 	"""Print mAP and results of each class.
@@ -631,6 +601,30 @@ def print_map_summary(mean_ap, results, dataset=None):
 		#print(table.table)
 
 
+def get_image_name_list(gt_txt,res_root):
+	image_list_1 = []
+	f = open(gt_txt,'r')
+	js = f.readlines()
+	f.close()
+	for i in range(len(js)):
+		info = json.loads(js[i])
+		image_list_1.append(info['image'])
+
+
+	image_list_2 = []
+	txt_files = os.listdir(res_root)
+	for i in range(len(txt_files)):
+		image = txt_files[i].strip('.txt')+('.jpg')
+		image_list_2.append(image)
+
+	if len(image_list_1) >= len(image_list_2):
+		image_list = image_list_2
+	else:
+		image_list = image_list_1
+
+	return image_list
+
+
 def summary_all_results(cat,results,thr_iou):
 	header = ['thr_iou']
 	for i in range(len(cat)):
@@ -656,59 +650,19 @@ def summary_all_results(cat,results,thr_iou):
 	print(table.table)
 
 
-# get score_thr added at 2019.06.06
-def get_score_thr(_cate_to_ind,title_name,precision):	
-	iou = title_name[title_name.rfind('iou=',0):].strip('iou=')
-	cate = title_name[:title_name.rfind('-iou=',0)].strip('-iou=')
-	ind = _cate_to_ind[cate]
-
-	res_txt = './res_det/tpfp_dets_thr_'+iou+'.txt'
-	res_info_ = open(res_txt,'r')
-	res_info = res_info_.readlines()
-
-	p_boxes = []
-	for i in range(len(res_info)):
-		p_box = res_info[i].strip('/n').split()
-		p_cate = int(p_box[6])
-		if p_cate == ind:
-			p_boxes.append(p_box)
-	p_boxes.sort(key=lambda x:-float(x[5]))
-
-	
-	num_tp = 0
-	num_fp = 0
-	p_index = 0
-	_p_prec = p_prec = 0
-	for i in range(len(p_boxes)):
-		whether_fp = float(p_boxes[i][7])
-		if whether_fp == 0:
-			num_tp = num_tp+1
-		else:
-			num_fp = num_fp+1
-		_p_prec = p_prec
-		p_prec = num_tp/(num_tp+num_fp)
-		if _p_prec>=precision and p_prec<=precision:
-			p_index = i
-
-	thr_99 = float(p_boxes[p_index][5])
-	thr_99 = round(thr_99,4)
-
-	return thr_99
-
-
-def print_pr_curve(title_name,_ind_to_cate,recall,precision,ap,pr_precision):
-	_cate_to_ind = {value:key for key,value in _ind_to_cate.items()}
-
-	pr_file = './pr_cruve/'
+def print_pr_curve(title_name,root_path,_ind_to_cate,all_iou_thr,recall,precision,ap,pr_precision):
+	pr_file = root_path+'pr_cruve/'
 	if not os.path.exists(pr_file):
 		os.makedirs(pr_file)
 
 	txt = pr_file+title_name+'.txt'
 	if not os.path.exists(txt):
 		os.system(r"touch {}".format(txt))
-
+	
 	y = recall
+	#y = [0] + y	
 	x = precision
+	#x = [1] + x
 
 	write_txt = open(txt,'w')
 	write_y = 'recall:'+' ' +str(y)
@@ -732,15 +686,13 @@ def print_pr_curve(title_name,_ind_to_cate,recall,precision,ap,pr_precision):
 	ap = round(ap,2)
 	plt.text(0.85, 1.0, 'ap=', size = 15, alpha = 0.2)
 	plt.text(0.95, 1.0, ap, size = 15, alpha = 0.2)
-	g = open(pr_file+title_name.split('-iou=')[1]+'.thres',"a")
+
 	if pr_precision==None or len(pr_precision)==0:
 		plt.savefig(pr_file+title_name+'.jpg',dpi=120,bbox_inches='tight') 
+
 	elif len(pr_precision)>0:
 		for s in range(len(pr_precision)):
 			temp_presion = pr_precision[s]
-			#_cate_to_ind = {value:key for key,value in _ind_to_cate.items()}
-			thr_99 = get_score_thr(_cate_to_ind=_cate_to_ind,title_name=title_name,precision=temp_presion)
-			g.write(str(_cate_to_ind[title_name.split('-iou=')[0]])+" "+str(temp_presion)+" "+str(thr_99)+"\n")
 			x_ = [temp_presion]*len(x)
 			idx = np.argwhere(np.diff(np.sign(x_ - x)) != 0)			
 			j = 0
@@ -765,9 +717,7 @@ def print_pr_curve(title_name,_ind_to_cate,recall,precision,ap,pr_precision):
 
 						plt.plot(line_x,line_y,'b--',linewidth=1)
 						plt.plot(line_x_,line_y_,'b--',linewidth=1)
-
-						plt.text(p_x, p_y, (p_x,p_y,[thr_99]),ha='center', va='bottom', color = "g",fontsize=10)
-
+						plt.text(p_x, p_y, (p_x,p_y),ha='center', va='bottom', color = "g",fontsize=10)
 				if j == 0:
 					l = -1
 					for k in range(len(idx)):
@@ -791,132 +741,85 @@ def print_pr_curve(title_name,_ind_to_cate,recall,precision,ap,pr_precision):
 
 							plt.plot(line_x,line_y,'b--',linewidth=1)
 							plt.plot(line_x_,line_y_,'b--',linewidth=1)
-							#plt.text(p, r, (p,r),ha='center', va='bottom', color = "g",fontsize=10)
-							plt.text(p, r, (p,r,[thr_99]),ha='center', va='bottom', color = "g",fontsize=10)
-	g.close()		
+							#print('p = ',p)
+							#print('r = ',r)
+							#print('\n')
+							plt.text(p, r, (p,r),ha='center', va='bottom', color = "g",fontsize=10)
+			
 	plt.savefig(pr_file+title_name+'.jpg',dpi=120,bbox_inches='tight') 
 
 
-def visualize(txt_file,vil_iou,image_file,if_gt,gt_txt = './res_det/gt_bbox.txt'):
-	image_list = []
-	f1 = open(txt_file,'r')
-	info1 = f1.readlines()
-	for i in range(len(info1)):
-		image = info1[i].strip().split()[-1]
-		#image = info1[i].strip().split("/")[-1]
-		image = image.replace('.xml','.jpg')
-		image_list.append(image)
 
-	f_gt = open(gt_txt,'r')
-	info_gt = f_gt.readlines()
+"""
+def print_pr_curve(title_name,root_path,_ind_to_cate,all_iou_thr,recall,precision):
+	pr_file = root_path+'pr_cruve/'
+	if not os.path.exists(pr_file):
+		os.makedirs(pr_file)
+	
+	x = recall
+	#x = [0] + x
+	x = np.array(x,dtype='float64')
+	y = precision
+	#y = [1] + y
+	y = np.array(y,dtype='float64')
 
-	if if_gt == True:
-		img_gt = dict()
-		for s in range(len(info_gt)):
-			line_gt = info_gt[s].split()
-			img_g = line_gt[4]
-			img = img_g.replace('.xml','.jpg')
-			if img not in img_gt.keys():
-				img_gt[img] = []
-				img_gt[img].append(line_gt)
-			else:
-				img_gt[img].append(line_gt)
-	for v in range(len(vil_iou)):
-		iou = vil_iou[v]
-		print('~~visualize the image when iou = ', iou)
+	y_ = [0.99]*len(x)
 
-		wrong_txt_file = './res_det/tpfp_dets_thr_'+str(iou)+'.txt'
-		visualize_path = './vil_image_'+str(iou)+'/'
-		prec_txt_file = './pr_cruve/'+str(iou)+'.thres'
-		with open(prec_txt_file) as f:
-			lines = f.readlines()
-			cate_score = dict()
-			for line in lines:
-				cat,pre,score = line.strip().split()
-				if pre == str(0.99):
-					cate_score[int(cat)] = float(score)
-		if not os.path.exists(visualize_path):
-			os.makedirs(visualize_path)
+	idx = np.argwhere(np.diff(np.sign(y_ - y)) != 0)
+	
+	plt.figure() 
+	plt.xlabel("recall") 
+	plt.ylabel("precision") 
+	plt.title(title_name) 
+	plt.xlim(0,1.1)
+	plt.ylim(0,1.1)
+	plt.plot(x,y,color="red",linewidth=3 ) 
 
 
-		f = open(wrong_txt_file,'r')
-		info = f.readlines()
-		img_bbox = {}
-		for j in range(len(info)):
-			line = info[j].split()
-			img = line[4]
-			img = img.replace('.xml','.jpg')
-			if img not in img_bbox.keys():
-				img_bbox[img] = []
-				img_bbox[img].append(line)
-			else:
-				img_bbox[img].append(line)
-		#print(len(img_bbox.keys()))
-		#exit()
-			# if image == img:
-				# bboxes.append(line)		
+	j = 0
+	if len(idx)!=0:
+		for i in range(len(idx)):
+			index = idx[i]
+			p_x_temp = round(x[index][0],2)
+			p_y_temp = round(y[index][0],2)
 
-		for i in range(len(image_list)):
-			image = image_list[i]
-			nums = 0
-			if image not in img_bbox.keys():
-				continue
-			bboxes = img_bbox[image]
-			for k in range(len(bboxes)):
-				box = bboxes[k]
-				x1 = int(float(box[0]))
-				y1 = int(float(box[1]))
-				x2 = int(float(box[2]))
-				y2 = int(float(box[3]))
-				score = round(float(box[5]),2)
-				cate = int(float(box[6]))
-				if_fp = int(float(box[7]))
+			if (p_y_temp ==0.99 and j==0) :
+				j = j+1
+				p_x = p_x_temp
+				p_y = p_y_temp
 
-				# if if_fp == 0:
-				# 	cv2.rectangle(image_, (x1,y1), (x2,y2), (0,225,0), 1)
-				# 	cv2.putText(image_,str(cate), (x1,y1+1), cv2.FONT_HERSHEY_COMPLEX, 0.5, (0, 225, 0), 1) 
-				# else:
-				# 	cv2.rectangle(image_, (x1,y1), (x2,y2), (0,0,225), 1)
-				# 	cv2.putText(image_,str(cate), (x1,y1+1), cv2.FONT_HERSHEY_COMPLEX, 0.5, (0, 0, 225), 1)
-				if if_fp == 1 and score>=cate_score[cate]:
-					if nums ==0:
-						image_ = cv2.imread(image_file + image)
-					cv2.rectangle(image_, (x1,y1), (x2,y2), (0,0,225), 1)
-					cv2.putText(image_,str(cate), (x1,y1+1), cv2.FONT_HERSHEY_COMPLEX, 0.5, (0, 0, 225), 1)	
-					nums += 1			 
-			if if_gt == True and nums >0 :
-				bboxes_gt = img_gt[image]
-				for k_gt in range(len(bboxes_gt)):
-					box = bboxes_gt[k_gt]
-					x1 = int(float(box[0]))
-					y1 = int(float(box[1]))
-					x2 = int(float(box[2]))
-					y2 = int(float(box[3]))
-					cate = int(float(box[5]))
-					if_ignore = int(float(box[6]))
+				plt.plot(p_x, p_y, 'gs', ms=3)
+				line_x = [p_x]*100
+				line_y = np.linspace(0,p_y,100)
+				line_x_ = np.linspace(0,p_x,100)
+				line_y_ = [p_y]*100
 
-					if if_ignore == 0:
-						cv2.rectangle(image_, (x1,y1), (x2,y2), (225, 0, 0), 1)
-						cv2.putText(image_,str(cate), (x1,y1+1), cv2.FONT_HERSHEY_COMPLEX, 0.5, (225, 0, 0), 1) 
-					else:
-						cv2.rectangle(image_, (x1,y1), (x2,y2), (0, 225, 225), 1)
-						cv2.putText(image_,str(cate), (x1,y1+1), cv2.FONT_HERSHEY_COMPLEX, 0.5, (0, 225, 225), 1) 
+				plt.plot(line_x,line_y,'b--',linewidth=1)
+				plt.plot(line_x_,line_y_,'b--',linewidth=1)
+				plt.text(p_x, p_y, (p_x,p_y),ha='center', va='bottom', color = "g",fontsize=10)
+		if j == 0:
+			for k in range(len(idx)):
+				a = y[idx][k][0]
+				b = y[idx[k]+1][0]
+				a_x = x[idx][k][0]
+				b_x = x[idx[k]+1][0]
+				if a>0.99 and b<0.99:
+					r = (a-0.99)/(a-b)*(b_x-a_x)
+					p = 0.99
 
+					line_x = [r]*100
+					line_y = np.linspace(0,p,100)
 
-			if nums > 0:
-				path = image.split("/")[-2]
-				if not os.path.exists(visualize_path+path+"/"):
-					os.makedirs(visualize_path+path+"/")
-				save_url = visualize_path+path+"/"+image.split("/")[-1]
-				cv2.imwrite(save_url, image_)
+					line_x_ = np.linspace(0,r,100)
+					line_y_ = [p]*100
 
-			cv2.waitKey(0)
-			cv2.destroyAllWindows()
+					plt.plot(line_x,line_y,'b--',linewidth=1)
+					plt.plot(line_x_,line_y_,'b--',linewidth=1)
+					plt.text(r, p, (r,p),ha='center', va='bottom', color = "g",fontsize=10)
+	
+	plt.savefig(pr_file+title_name+'.jpg',dpi=120,bbox_inches='tight') 
 
-
-
-
-
+"""
 
 
 

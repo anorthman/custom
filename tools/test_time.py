@@ -17,7 +17,6 @@ class timenet(nn.Module):
 		x = self.unit(x)
 		return x 
 	def test_time(self,is_cuda):
-		print("---------")
 		print(self.scale)
 		if is_cuda:
 			inputs = torch.randn((self.scale)).cuda()
@@ -39,13 +38,13 @@ parser.add_argument("--gpu", action='store_true',
 					help="test time with gpu or cpu")
 parser.add_argument("--skip", type=bool, default=True,
 					help="add skip or not")
-parser.add_argument("--scale", type=list, default=[1,3,320,320],
+parser.add_argument("--scale", type=list, default=[1,3,108,192],
 					help="input of the model")
 
 args = parser.parse_args()
 search_cfg = Config.fromfile(args.fb_cfg)
 _space = search_cfg.search_space
-base = _space['base']
+#base = _space['base']
 depth = _space['depth']
 space = _space['space']
 skip = args.skip
@@ -56,17 +55,16 @@ print(is_cuda)
 writefile = "./speed/"+args.fb_cfg.split("/")[-1]+"_speed_gpu.txt" if is_cuda else "./speed/"+args.fb_cfg.split("/")[-1]+"_speed_cpu.txt"
 with open(writefile, "w") as f:
 	for i in range(len(depth)):
-		if i != 0:
-			scale[2],scale[3] = int(scale[2]/2), int(scale[3]/2)
+		scale[2],scale[3] = int(scale[2]/2), int(scale[3]/2)
 		for j in range(depth[i]):	   
 			#blocks = nn.ModuleList()
 			if j!=0 and skip:
-				print("j")
 				net = timenet(scale, BASICUNIT['Identity'](), 1000)
 				#net = net.cuda()
 				times = net.test_time(is_cuda)
 				f.write(str(times*1000)+" ")  
 			for unit in space:
+				print("^^^^^^^^")
 				if j == 0:				
 					unit['param']['stride'] = 2
 					unit['param']['_in'] = unit['param']['_in']
@@ -75,6 +73,7 @@ with open(writefile, "w") as f:
 					unit['param']['stride'] = 1
 					unit['param']['_in'] = unit['param']['_out']
 				scale[1] = unit['param']['_in']
+				print(unit)
 				if is_cuda:
 					net = timenet(scale, BASICUNIT[unit['type']](**unit['param']), 1000).cuda()
 				else:

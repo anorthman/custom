@@ -48,9 +48,12 @@ class FBNet(nn.Module):
         self.t_cfg = t_cfg
         self.out = [list(accumulate(self.depth))[z]-1 for z in search_cfg['out']]
         self.logger = logging
-        self.baseconv = nn.Conv2d(**search_cfg['base'])
-        self.bn1 = nn.BatchNorm2d(search_cfg['base']['out_channels'])
+        self.baseconv1 = nn.Conv2d(**search_cfg['base1'])
+        self.bn1 = nn.BatchNorm2d(search_cfg['base1']['out_channels'])
+        self.baseconv2 = nn.Conv2d(**search_cfg['base2'])
+        self.bn2 = nn.BatchNorm2d(search_cfg['base2']['out_channels'])
         self.relu1 = nn.ReLU(inplace=True)
+        self.pool = nn.MaxPool2d(kernel_size=3,stride=2,padding=1)
         self._ops = self.build()
         with open(speed_txt, "r") as f:
             self.speed = f.readlines()
@@ -92,16 +95,20 @@ class FBNet(nn.Module):
     def forward_train(self, x, temperature): 
         x = self.baseconv(x)
         x = self.bn1(x)
-        x = self.relu1(x) 
+        #x = self.relu1(x)
+        x = self.pool(x) 
         for i in range(len(self._ops)):
             weight = nn.functional.gumbel_softmax(self.theta[i], temperature).cuda()
             x = self._ops[i](x, weight)
         return x
 
     def forward(self, x, temperature):
-        x = self.baseconv(x)
+        x = self.baseconv1(x)
         x = self.bn1(x)
+        x = self.baseconv2(x)
+        x = self.bn2(x)
         x = self.relu1(x)
+        x = self.pool(x)
         late_loss = 0
         outs = []
         for i in range(len(self._ops)):
