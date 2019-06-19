@@ -1,10 +1,17 @@
 # fbnet detection search
 
-**test_block_time**
+- **test_block_time**
+
 python  tools/test_time.py configs/search_config/bottlenetck_kernel.py 
 
-**fbnet_search**
+- **fbnet_search**
+
 ./search.sh configs/model_config/retinanet_fpn.py configs/search_config/bottlenetck_kernel.py speed/bottlenetck_kernel.py_speed_gpu.txt
 
-**fbnet_train** (according to search_result)
+- **fbnet_train** (according to search_result)
 
+./train.sh configs/model_config/retinanet_fpn.py configs/search_config/bottlenetck_kernel.py theta/bottlenetck_kernel_retinanet_fpn/base.txt --work_dir ./your_path_tosave
+
+- **fbnet_test** (according to train_result)
+
+./test.sh configs/model_config/retinanet_fpn.py configs/search_config/bottlenetck_kernel.py theta/bottlenetck_kernel_retinanet_fpn/base.txt your_path_tosave/lastest.pth --show
