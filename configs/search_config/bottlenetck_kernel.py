@@ -1,12 +1,15 @@
-
+from torch import nn
 
 search_space = dict(
-    base=dict(
-            in_channels=3,out_channels=16,
-            kernel_size=3,stride=2,padding=1,bias=False
-            ),
-    depth=[4, 5, 6],#, 2],
-    #out_indices=[0,1,2,3],
+    base=[
+        nn.Conv2d(in_channels=3,out_channels=16,
+            kernel_size=3,stride=2,padding=1,bias=False),
+        nn.BatchNorm2d(16),
+        nn.MaxPool2d(kernel_size=2,stride=2,padding=0), 
+        nn.ReLU(inplace=True)
+            ],
+    depth=[4, 4, 4],
+    out=[1,2],
     space=[
         dict(
             type="ResNetBottleneck",

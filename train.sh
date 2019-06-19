@@ -12,5 +12,3 @@ python tools/fbnet_train.py \
     --gpus 2 \
     --theta_txt $theta_txt \
     $work_dirs    
-    #--theta_txt theta/epoch_30_end_arch_params.txt \
-    #--work_dir ./work_dirs/car/search_fbnet2 \

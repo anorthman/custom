@@ -12,6 +12,3 @@ python tools/fbnet_test.py \
     --model_cfg $model_cfg \
     --theta_txt $theta_txt \
     $out #--out ./work_dirs/face/search_fbnet_epoch50/result.pkl \
-#    --show 
-    #--out ${theta_txt}.pkl
-    #--theta_txt theta/bottlenetck_kernel_fasterrcnn_str16/fbent2_3x3.txt \

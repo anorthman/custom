@@ -32,7 +32,7 @@ class timenet(nn.Module):
 		return ((end-start)/self.iters)
 
 parser = argparse.ArgumentParser(description="Test a block time .")
-parser.add_argument('--fb_cfg', type=str, default=None,
+parser.add_argument('fb_cfg', type=str, default=None,
 					help='config contains of all blocks.')
 parser.add_argument("--gpu", action='store_true',
 					help="test time with gpu or cpu")

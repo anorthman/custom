@@ -43,12 +43,12 @@ class detection(nn.Module):
 def main():    
     parser = argparse.ArgumentParser(description="Train a model with data parallel for base net \
                                     and model parallel for classify net.")
-    parser.add_argument('--batch-size', type=int, default=256,
-                        help='training batch size of all devices.')
-    parser.add_argument('--epochs', type=int, default=1000,
-                        help='number of training epochs.')
-    parser.add_argument('--log-frequence', type=int, default=10,
-                        help='log frequence, default is 400')
+    #parser.add_argument('--batch-size', type=int, default=256,
+    #                    help='training batch size of all devices.')
+    #parser.add_argument('--epochs', type=int, default=1000,
+    #                    help='number of training epochs.')
+    #parser.add_argument('--log-frequence', type=int, default=10,
+    #                    help='log frequence, default is 400')
     parser.add_argument('--gpus', type=str, default='0',
                         help='gpus, default is 0')
     parser.add_argument('--fb_cfg', type=str, help='fbnet_buildconfig')
@@ -59,16 +59,11 @@ def main():
 
     search_cfg = mmcv_config.fromfile(args.fb_cfg)
     _space = search_cfg.search_space
-    # base = _space['base']
-    # depth = _space['depth']
-    # space = _space['space']
 
     model_cfg = mmcv_config.fromfile(args.model_cfg)
     # # dataset settings
     classes = ['background', 'face']
     min_scale = 0
-    #w_data, t_data=split_data('./data/libraf2_imglist', 
-    #                'libraf2_face', classes, min_scale)
     w_data, t_data=split_data('./data/newlibraf_info/train_imglist', 
                     './newlibraf_info/newlibraf_face', classes, min_scale)
     img_norm_cfg = dict(
@@ -96,7 +91,7 @@ def main():
             with_mask=False,
             with_crowd=True,
             with_label=True))
-    gpus = [0,2,3,4,5,6]
+    gpus = [int(x) for x in args.gpus.split(",")]
     w_dataset = CustomDataset(**w_data_cfg['train'])
     w_dataset = build_dataloader(w_dataset, imgs_per_gpu=16,
                        workers_per_gpu=4,
