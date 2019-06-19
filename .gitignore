@@ -1,8 +1,5 @@
 *.pyc
 work_dirs/
-theta/
-speed/
-configs/
 data/
 logs/
 *.log
