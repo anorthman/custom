@@ -132,4 +132,4 @@ class FBNet(nn.Module):
         speed = [float(tmp) for tmp in speed]
         assert len(speed) == weight.size()[1]
         lat = weight*torch.Tensor(speed).cuda()
-        return lat.sum
+        return lat.sum()
