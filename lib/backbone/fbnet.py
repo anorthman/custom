@@ -87,16 +87,6 @@ class FBNet(nn.Module):
         assert len(_ops) == self.depth_num
         return _ops
 
-    def forward_train(self, x, temperature): 
-        x = self.baseconv(x)
-        x = self.bn1(x)
-        #x = self.relu1(x)
-        x = self.pool(x) 
-        for i in range(len(self._ops)):
-            weight = nn.functional.gumbel_softmax(self.theta[i], temperature).cuda()
-            x = self._ops[i](x, weight)
-        return x
-
     def forward(self, x, temperature):
         x = self.base(x)
         late_loss = 0

@@ -65,15 +65,6 @@ class FBNet_sample(nn.Module):
                 k += 1        
         return blocks
 
-    def forward_train(self, x, temperature): 
-        x = self.baseconv(x)
-        x = self.bn1(x)
-        x = self.relu1(x) 
-        for i in range(len(self._ops)):
-            weight = nn.functional.gumbel_softmax(self.theta[i], temperature).cuda()
-            x = self._ops[i](x, weight)
-        return x
-
     def forward(self, x):
         x = self.base(x)
         outs = []
