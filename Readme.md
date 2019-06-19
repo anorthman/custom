@@ -1,5 +1,9 @@
 # fbnet detection search
 
+## Introduction
+FBNet: Hardware-Aware Efficient ConvNet Design via Differentiable Neural Architecture Search(https://arxiv.org/abs/1812.03443)
+The master branch works with (https://github.com/open-mmlab/mmdetection)edb03937964b583a59dd1bddf76eaba82df9e8c0
+
 - **test_block_time**
 
 python  tools/test_time.py configs/search_config/bottlenetck_kernel.py 
