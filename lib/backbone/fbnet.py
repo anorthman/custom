@@ -127,3 +127,9 @@ class FBNet(nn.Module):
             #             constant_init(m.norm2, 0)
         else:
             raise TypeError('pretrained must be a str or None') 
+    def lat_loss(self, speed, weight):
+        speed = speed.strip().split()
+        speed = [float(tmp) for tmp in speed]
+        assert len(speed) == weight.size()[1]
+        lat = weight*torch.Tensor(speed).cuda()
+        return lat.sum
