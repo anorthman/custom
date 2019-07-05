@@ -222,6 +222,39 @@ class pz_DownsampleUnit(nn.Module):
             out5 += _out3
         return out5
 
+@BASICUNIT.register_module
+class ResNetV2BasicBlock(nn.Module):
+  def __init__(self, _in, _out, kernel_size=3, padding=1, stride=1, expansion=1, groups=[1, 1], skip_connection=True):
+    super(ResNetBottleneck, self).__init__()
+    m = OrderedDict()
+    m['bn0'] = nn.BatchNorm2d(_in)
+    m['relu0'] = nn.ReLU(inplace=True)
+    m['conv1'] = nn.Conv2d(_in, _out * expansion, kernel_size=kernel_size, stride=stride, padding=padding,
+                           groups=groups[0], bias=False)
+    m['bn1'] = nn.BatchNorm2d(_out * expansion)
+    m['relu1'] = nn.ReLU(inplace=True)
+    m['conv2'] = nn.Conv2d(_out * expansion, _out, kernel_size=kernel_size, stride=1, padding=padding,
+                           groups=groups[1], bias=False)
+    self.residual = nn.Sequential(m)
+    self.skip_connection = skip_connection
+    if self.skip_connection:
+        self.downsample = None
+        if stride != 1 or _in != _out:
+          self.downsample = nn.Sequential(
+              nn.Conv2d(_in, _out, kernel_size=1, stride=stride, bias=False),
+              nn.BatchNorm2d(_out))
+
+  def forward(self, x):
+    if self.skip_connection:
+        if self.downsample is not None:
+            skip = self.downsample(x)
+        else:
+            skip = x
+        out = self.redisual(x) + skip
+    else:
+        out = self.residual(x)
+    return out
+                
 
 @BASICUNIT.register_module
 class ResNetBasicBlock(nn.Module):
