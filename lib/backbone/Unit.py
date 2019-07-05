@@ -225,7 +225,7 @@ class pz_DownsampleUnit(nn.Module):
 @BASICUNIT.register_module
 class ResNetV2BasicBlock(nn.Module):
   def __init__(self, _in, _out, kernel_size=3, padding=1, stride=1, expansion=1, groups=[1, 1], skip_connection=True):
-    super(ResNetBottleneck, self).__init__()
+    super(ResNetV2BasicBlock, self).__init__()
     m = OrderedDict()
     m['bn0'] = nn.BatchNorm2d(_in)
     m['relu0'] = nn.ReLU(inplace=True)
